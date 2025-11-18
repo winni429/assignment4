@@ -1,0 +1,182 @@
+{
+  "ERM": {
+    "Std Acc": {
+      "CIFAR100": 81.03,
+      "CIFAR10": 94.85,
+      "SVHN": 94.44,
+      "MNIST": 99.37
+    },
+    "CRR": {
+      "CIFAR100": 9.28,
+      "CIFAR10": 1.25,
+      "SVHN": 52.72,
+      "MNIST": 26.01
+    },
+    "CRA": {
+      "CIFAR100": 4.52,
+      "CIFAR10": 1.25,
+      "SVHN": 51.04,
+      "MNIST": 24.96
+    }
+  },
+  "DA": {
+    "Std Acc": {
+      "CIFAR100": 78.27,
+      "CIFAR10": 94.21,
+      "SVHN": 94.69,
+      "MNIST": 99.42
+    },
+    "CRR": {
+      "CIFAR100": 15.04,
+      "CIFAR10": 81.08,
+      "SVHN": 82.08,
+      "MNIST": 85.23
+    },
+    "CRA": {
+      "CIFAR100": 6.15,
+      "CIFAR10": 76.07,
+      "SVHN": 82.01,
+      "MNIST": 84.12
+    }
+  },
+  "PGDT": {
+    "Std Acc": {
+      "CIFAR100": 64.35,
+      "CIFAR10": 84.38,
+      "SVHN": 91.19,
+      "MNIST": 99.16
+    },
+    "CRR": {
+      "CIFAR100": 57.07,
+      "CIFAR10": 87.07,
+      "SVHN": 87.89,
+      "MNIST": 94.65
+    },
+    "CRA": {
+      "CIFAR100": 32.93,
+      "CIFAR10": 82.9,
+      "SVHN": 86.68,
+      "MNIST": 94.63
+    }
+  },
+  "TRADES": {
+    "Std Acc": {
+      "CIFAR100": 62.55,
+      "CIFAR10": 80.42,
+      "SVHN": 86.16,
+      "MNIST": 99.1
+    },
+    "CRR": {
+      "CIFAR100": 59.27,
+      "CIFAR10": 88.54,
+      "SVHN": 87.89,
+      "MNIST": 94.76
+    },
+    "CRA": {
+      "CIFAR100": 38.85,
+      "CIFAR10": 78.8,
+      "SVHN": 84.76,
+      "MNIST": 94.61
+    }
+  },
+  "MART": {
+    "Std Acc": {
+      "CIFAR100": 63.68,
+      "CIFAR10": 81.54,
+      "SVHN": 90.2,
+      "MNIST": 98.94
+    },
+    "CRR": {
+      "CIFAR100": 58.79,
+      "CIFAR10": 78.9,
+      "SVHN": 85.23,
+      "MNIST": 94.13
+    },
+    "CRA": {
+      "CIFAR100": 49.37,
+      "CIFAR10": 72.21,
+      "SVHN": 78.82,
+      "MNIST": 94.09
+    }
+  },
+  "RS": {
+    "Std Acc": {
+      "CIFAR100": 56.87,
+      "CIFAR10": 89.45,
+      "SVHN": 88.35,
+      "MNIST": 97.16
+    },
+    "CRR": {
+      "CIFAR100": 60.38,
+      "CIFAR10": 90.0,
+      "SVHN": 76.29,
+      "MNIST": 87.15
+    },
+    "CRA": {
+      "CIFAR100": 47.5,
+      "CIFAR10": 87.98,
+      "SVHN": 70.64,
+      "MNIST": 86.29
+    }
+  },
+  "IBP": {
+    "Std Acc": {
+      "CIFAR100": 39.45,
+      "CIFAR10": 48.4,
+      "SVHN": 73.09,
+      "MNIST": 97.78
+    },
+    "CRR": {
+      "CIFAR100": 49.34,
+      "CIFAR10": 54.7,
+      "SVHN": 61.94,
+      "MNIST": 89.18
+    },
+    "CRA": {
+      "CIFAR100": 29.2,
+      "CIFAR10": 40.0,
+      "SVHN": 57.26,
+      "MNIST": 88.51
+    }
+  },
+  "PRL": {
+    "Std Acc": {
+      "CIFAR100": 64.89,
+      "CIFAR10": 93.82,
+      "SVHN": 92.0,
+      "MNIST": 99.32
+    },
+    "CRR": {
+      "CIFAR100": 56.71,
+      "CIFAR10": 90.71,
+      "SVHN": 93.11,
+      "MNIST": 96.03
+    },
+    "CRA": {
+      "CIFAR100": 50.77,
+      "CIFAR10": 90.63,
+      "SVHN": 91.07,
+      "MNIST": 95.01
+    }
+  },
+  "TandT": {
+    "Std Acc": {
+      "CIFAR100": 65.56,
+      "CIFAR10": 94.23,
+      "SVHN": 94.79,
+      "MNIST": 99.32
+    },
+    "CRR": {
+      "CIFAR100": 62.05,
+      "CIFAR10": 95.08,
+      "SVHN": 93.15,
+      "MNIST": 97.8
+    },
+    "CRA": {
+      "CIFAR100": 52.07,
+      "CIFAR10": 91.75,
+      "SVHN": 92.81,
+      "MNIST": 96.8
+    }
+  }
+}

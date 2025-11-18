@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDV Assignment 4 - Line Chart (Enhanced Interaction)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 2rem; }
+        /* 交互控制区样式 */
+        .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-bottom: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 6px; }
+        .metric-group, .model-group { display: flex; align-items: center; gap: 0.8rem; }
+        .control-label { font-weight: 600; color: #333; }
+        button { padding: 0.6rem 1.2rem; border: none; border-radius: 4px; background: #2c3e50; color: white; cursor: pointer; font-size: 0.9rem; transition: background 0.3s; }
+        button:hover { background: #34495e; }
+        button.active { background: #3498db; }
+        /* 图表容器与缩放提示 */
+        .chart-container { position: relative; height: 600; }
+        .zoom-hint { position: absolute; top: 10px; right: 10px; font-size: 0.8rem; color: #666; background: rgba(255,255,255,0.8); padding: 0.3rem 0.6rem; border-radius: 3px; }
+        /* 工具提示样式 */
+        .tooltip { position: absolute; background: rgba(0,0,0,0.9); color: white; padding: 0.8rem 1.2rem; border-radius: 4px; pointer-events: none; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        /* 图例样式（支持点击筛选） */
+        .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.2rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee; }
+        .legend-item { display: flex; align-items: center; cursor: pointer; transition: opacity 0.3s; }
+        .legend-item:hover { opacity: 0.8; }
+        .legend-item.disabled { opacity: 0.4; }
+        .legend-color { width: 18px; height: 3px; margin-right: 6px; }
+        .legend-text { font-size: 0.9rem; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Model Performance Line Chart (Data1)</h1>
+        <p class="subtitle">Interactive Line Chart for Standard Accuracy / Certified Robustness Rate / Certified Robust Accuracy</p>
+        
+        <!-- 增强交互控制区 -->
+        <div class="controls">
+            <!-- 指标切换按钮 -->
+            <div class="metric-group">
+                <span class="control-label">Metric:</span>
+                <button class="metric-btn active" data-metric="Std Acc">Standard Accuracy</button>
+                <button class="metric-btn" data-metric="CRR">Certified Robustness Rate</button>
+                <button class="metric-btn" data-metric="CRA">Certified Robust Accuracy</button>
+            </div>
+            <!-- 重置缩放按钮 -->
+            <div class="zoom-group">
+                <button id="reset-zoom">Reset Zoom/Pan</button>
+            </div>
+        </div>
+        
+        <!-- 图表容器与缩放提示 -->
+        <div class="chart-container">
+            <div class="zoom-hint">Zoom: Mouse Wheel | Pan: Drag</div>
+            <div class="tooltip"></div>
+        </div>
+        
+        <!-- 可交互图例（点击隐藏/显示对应模型线） -->
+        <div class="legend"></div>
+    </div>
+
+    <script>
+        // 1. 加载Data1数据（与原JSON一致）
+        const modelData = {
+            "ERM": {
+                "Std Acc": { "CIFAR100": 81.03, "CIFAR10": 94.85, "SVHN": 94.44, "MNIST": 99.37 },
+                "CRR": { "CIFAR100": 9.28, "CIFAR10": 1.25, "SVHN": 52.72, "MNIST": 26.01 },
+                "CRA": { "CIFAR100": 4.52, "CIFAR10": 1.25, "SVHN": 51.04, "MNIST": 24.96 }
+            },
+            "DA": {
+                "Std Acc": { "CIFAR100": 78.27, "CIFAR10": 94.21, "SVHN": 94.69, "MNIST": 99.42 },
+                "CRR": { "CIFAR100": 15.04, "CIFAR10": 81.08, "SVHN": 82.08, "MNIST": 85.23 },
+                "CRA": { "CIFAR100": 6.15, "CIFAR10": 76.07, "SVHN": 82.01, "MNIST": 84.12 }
+            },
+            "PGDT": {
+                "Std Acc": { "CIFAR100": 64.35, "CIFAR10": 84.38, "SVHN": 91.19, "MNIST": 99.16 },
+                "CRR": { "CIFAR100": 57.07, "CIFAR10": 87.07, "SVHN": 87.89, "MNIST": 94.65 },
+                "CRA": { "CIFAR100": 32.93, "CIFAR10": 82.9, "SVHN": 86.68, "MNIST": 94.63 }
+            },
+            "TRADES": {
+                "Std Acc": { "CIFAR100": 62.55, "CIFAR10": 80.42, "SVHN": 86.16, "MNIST": 99.1 },
+                "CRR": { "CIFAR100": 59.27, "CIFAR10": 88.54, "SVHN": 87.89, "MNIST": 94.76 },
+                "CRA": { "CIFAR100": 38.85, "CIFAR10": 78.8, "SVHN": 84.76, "MNIST": 94.61 }
+            },
+            "MART": {
+                "Std Acc": { "CIFAR100": 63.68, "CIFAR10": 81.54, "SVHN": 90.2, "MNIST": 98.94 },
+                "CRR": { "CIFAR100": 58.79, "CIFAR10": 78.9, "SVHN": 85.23, "MNIST": 94.13 },
+                "CRA": { "CIFAR100": 49.37, "CIFAR10": 72.21, "SVHN": 78.82, "MNIST": 94.09 }
+            },
+            "RS": {
+                "Std Acc": { "CIFAR100": 56.87, "CIFAR10": 89.45, "SVHN": 88.35, "MNIST": 97.16 },
+                "CRR": { "CIFAR100": 60.38, "CIFAR10": 90.0, "SVHN": 76.29, "MNIST": 87.15 },
+                "CRA": { "CIFAR100": 47.5, "CIFAR10": 87.98, "SVHN": 70.64, "MNIST": 86.29 }
+            },
+            "IBP": {
+                "Std Acc": { "CIFAR100": 39.45, "CIFAR10": 48.4, "SVHN": 73.09, "MNIST": 97.78 },
+                "CRR": { "CIFAR100": 49.34, "CIFAR10": 54.7, "SVHN": 61.94, "MNIST": 89.18 },
+                "CRA": { "CIFAR100": 29.2, "CIFAR10": 40.0, "SVHN": 57.26, "MNIST": 88.51 }
+            },
+            "PRL": {
+                "Std Acc": { "CIFAR100": 64.89, "CIFAR10": 93.82, "SVHN": 92.0, "MNIST": 99.32 },
+                "CRR": { "CIFAR100": 56.71, "CIFAR10": 90.71, "SVHN": 93.11, "MNIST": 96.03 },
+                "CRA": { "CIFAR100": 50.77, "CIFAR10": 90.63, "SVHN": 91.07, "MNIST": 95.01 }
+            },
+            "TandT": {
+                "Std Acc": { "CIFAR100": 65.56, "CIFAR10": 94.23, "SVHN": 94.79, "MNIST": 99.32 },
+                "CRR": { "CIFAR100": 62.05, "CIFAR10": 95.08, "SVHN": 93.15, "MNIST": 97.8 },
+                "CRA": { "CIFAR100": 52.07, "CIFAR10": 91.75, "SVHN": 92.81, "MNIST": 96.8 }
+            }
+        };
+
+        // 2. 全局配置与状态管理
+        const config = {
+            margin: { top: 50, right: 50, bottom: 80, left: 80 },
+            width: 1200 - 130, // 容器宽度 - 左右边距
+            height: 600 - 130, // 容器高度 - 上下边距
+            datasets: ["CIFAR100", "CIFAR10", "SVHN", "MNIST"], // X轴数据集
+            models: Object.keys(modelData), // 所有模型（折线）
+            activeMetric: "Std Acc", // 当前激活的指标
+            activeModels: Object.keys(modelData).reduce((obj, model) => { // 模型激活状态（默认全部显示）
+                obj[model] = true;
+                return obj;
+            }, {}),
+            colors: d3.scaleOrdinal() // 模型颜色映射
+                .domain(Object.keys(modelData))
+                .range(d3.schemeCategory10)
+        };
+
+        // 3. 创建SVG与缩放容器（支持缩放平移）
+        const svg = d3.select(".chart-container")
+            .append("svg")
+            .attr("width", config.width + config.margin.left + config.margin.right)
+            .attr("height", config.height + config.margin.top + config.margin.bottom)
+            .append("g")
+            .attr("class", "zoom-container")
+            .attr("transform", `translate(${config.margin.left},${config.margin.top})`);
+
+        // 4. 初始化缩放功能（参考摘要1、6的缩放平移实现）
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 10]) // 缩放范围：最小0.5倍，最大10倍
+            .translateExtent([[0, 0], [config.width, config.height]]) // 平移范围限制在图表内
+            .on("zoom", (event) => {
+                // 应用缩放变换到所有图表元素（轴线、网格、折线、数据点）
+                gX.call(xAxis.scale(event.transform.rescaleX(xScale)));
+                gY.call(yAxis.scale(event.transform.rescaleY(yScale)));
+                lineGroup.selectAll(".model-line").attr("d", d => lineGenerator(event.transform.rescaleX(xScale), event.transform.rescaleY(yScale))(d.values));
+                pointGroup.selectAll(".data-point").attr("cx", d => event.transform.rescaleX(xScale)(d.dataset)).attr("cy", d => event.transform.rescaleY(yScale)(d.value));
+            });
+
+        // 给SVG添加缩放监听
+        d3.select(".chart-container svg").call(zoom);
+
+        // 5. 创建X/Y轴比例尺与轴线
+        // X轴：离散数据集（分类比例尺）
+        const xScale = d3.scaleBand()
+            .domain(config.datasets)
+            .range([0, config.width])
+            .padding(0.1);
+
+        // Y轴：连续数值（0-100%，线性比例尺）
+        const yScale = d3.scaleLinear()
+            .domain([0, 100])
+            .range([config.height, 0]);
+
+        // X轴与Y轴生成器
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale).tickFormat(d => `${d}%`); // 显示百分比
+
+        // 添加X轴（底部）
+        const gX = svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0,${config.height})`)
+            .call(xAxis)
+            .selectAll("text")
+            .attr("font-size", 12)
+            .attr("transform", "rotate(-45)") // 旋转标签避免重叠
+            .attr("text-anchor", "end");
+
+        // 添加Y轴（左侧）
+        const gY = svg.append("g")
+            .attr("class", "y-axis")
+            .call(yAxis)
+            .selectAll("text")
+            .attr("font-size", 12);
+
+        // 6. 添加轴标签与网格线
+        // X轴标签
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("x", config.width / 2)
+            .attr("y", config.height + config.margin.bottom - 20)
+            .text("Datasets")
+            .style("text-anchor", "middle")
+            .style("font-size", 14)
+            .style("font-weight", 500);
+
+        // Y轴标签
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("x", -config.height / 2)
+            .attr("y", -config.margin.left + 20)
+            .attr("transform", "rotate(-90)")
+            .text("Performance (%)")
+            .style("text-anchor", "middle")
+            .style("font-size", 14)
+            .style("font-weight", 500);
+
+        // 添加水平网格线（参考摘要3的网格配置）
+        svg.append("g")
+            .attr("class", "grid")
+            .selectAll("line")
+            .data(yScale.ticks(10)) // 生成10条网格线
+            .enter()
+            .append("line")
+            .attr("x1", 0)
+            .attr("x2", config.width)
+            .attr("y1", d => yScale(d))
+            .attr("y2", d => yScale(d))
+            .attr("stroke", "#e0e0e0")
+            .attr("stroke-width", 1)
+            .attr("stroke-dasharray", "3,3");
+
+        // 7. 创建折线生成器（核心：将模型数据转换为折线路径）
+        const lineGenerator = (xScale, yScale) => d3.line()
+            .x(d => xScale(d.dataset) + xScale.bandwidth() / 2) // X轴位置（数据集带宽中心）
+            .y(d => yScale(d.value)) // Y轴位置（指标数值）
+            .curve(d3.curveMonotoneX); // 平滑曲线（避免折线尖锐）
+
+        // 8. 初始化图表容器（折线与数据点分开分组，便于控制）
+        const lineGroup = svg.append("g").attr("class", "line-group"); // 折线组
+        const pointGroup = svg.append("g").attr("class", "point-group"); // 数据点组
+        const tooltip = d3.select(".tooltip"); // 工具提示
+
+        // 9. 核心函数：更新图表（支持指标切换、模型显隐、缩放后重绘）
+        function updateChart() {
+            // 9.1 处理数据：将模型-指标数据转换为折线所需格式
+            const processedData = config.models
+                .filter(model => config.activeModels[model]) // 只保留激活的模型
+                .map(model => ({
+                    model,
+                    values: config.datasets.map(dataset => ({
+                        dataset,
+                        value: modelData[model][config.activeMetric][dataset],
+                        model // 携带模型信息，用于tooltip
+                    }))
+                }));
+
+            // 9.2 数据绑定：折线元素
+            const lines = lineGroup.selectAll(".model-line")
+                .data(processedData, d => d.model);
+
+            // 9.3 移除已隐藏的折线（exit阶段）
+            lines.exit()
+                .transition()
+                .duration(500)
+                .attr("opacity", 0)
+                .remove();
+
+            // 9.4 添加新折线（enter阶段）
+            const newLines = lines.enter()
+                .append("path")
+                .attr("class", "model-line")
+                .attr("stroke", d => config.colors(d.model))
+                .attr("stroke-width", 2.5)
+                .attr("fill", "none")
+                .attr("opacity", 0); // 初始透明，通过过渡显示
+
+            // 9.5 更新现有折线（merge阶段）
+            newLines.merge(lines)
+                .transition()
+                .duration(800)
+                .ease(d3.easeCubic)
+                .attr("opacity", 1)
+                .attr("d", d => lineGenerator(xScale, yScale)(d.values));
+
+            // 9.6 数据绑定：数据点元素（每个模型的每个数据集对应一个点）
+            const points = pointGroup.selectAll(".data-point")
+                .data(processedData.flatMap(d => d.values), d => `${d.model}-${d.dataset}`);
+
+            // 9.7 移除已隐藏的点（exit阶段）
+            points.exit()
+                .transition()
+                .duration(500)
+                .attr("r", 0)
+                .attr("opacity", 0)
+                .remove();
+
+            // 9.8 添加新数据点（enter阶段）
+            const newPoints = points.enter()
+                .append("circle")
+                .attr("class", "data-point")
+                .attr("cx", d => xScale(d.dataset) + xScale.bandwidth() / 2)
+                .attr("cy", d => yScale(d.value))
+                .attr("r", 0) // 初始半径0，过渡到6
+                .attr("fill", d => config.colors(d.model))
+                .attr("stroke", "white")
+                .attr("stroke-width", 1.2)
+                .attr("cursor", "pointer")
+                .on("mouseover", handlePointHover) // 鼠标悬停事件（摘要1、4、6）
+                .on("mouseout", handlePointMouseOut)
+                .on("click", handlePointClick); // 鼠标点击事件（摘要1、6）
+
+            // 9.9 更新现有数据点（merge阶段）
+            newPoints.merge(points)
+                .transition()
+                .duration(800)
+                .ease(d3.easeCubic)
+                .attr("cx", d => xScale(d.dataset) + xScale.bandwidth() / 2)
+                .attr("cy", d => yScale(d.value))
+                .attr("r", 6)
+                .attr("fill", d => config.colors(d.model))
+                .attr("opacity", 1);
+
+            // 9.10 更新图例（同步模型显隐状态）
+            updateLegend();
+        }
+
+        // 10. 交互事件处理函数
+        // 10.1 数据点悬停：显示tooltip（参考摘要1、4、6）
+        function handlePointHover(event, d) {
+            // 显示tooltip，包含模型、数据集、指标数值
+            tooltip.style("opacity", 1)
+                .style("left", `${event.pageX + 15}px`)
+                .style("top", `${event.pageY - 25}px`)
+                .html(`
+                    <div><strong>Model:</strong> ${d.model}</div>
+                    <div><strong>Dataset:</strong> ${d.dataset}</div>
+                    <div><strong>${config.activeMetric}:</strong> ${d.value.toFixed(2)}%</div>
+                `);
+
+            // 高亮当前数据点（放大+加深颜色）
+            d3.select(this)
+                .transition()
+                .duration(300)
+                .attr("r", 8)
+                .attr("stroke", "#333")
+                .attr("stroke-width", 1.5);
+
+            // 高亮对应模型的折线（加粗）
+            lineGroup.selectAll(".model-line")
+                .filter(lineD => lineD.model === d.model)
+                .transition()
+                .duration(300)
+                .attr("stroke-width", 4)
+                .attr("stroke", d => d3.color(config.colors(d.model)).darker(0.3));
+        }
+
+        // 10.2 数据点离开：隐藏tooltip并恢复样式
+        function handlePointMouseOut() {
+            // 隐藏tooltip
+            tooltip.style("opacity", 0);
+
+            // 恢复数据点样式
+            d3.select(this)
+                .transition()
+                .duration(300)
+                .attr("r", 6)
+                .attr("stroke", "white")
+                .attr("stroke-width", 1.2);
+
+            // 恢复对应模型的折线样式
+            const model = d3.select(this).datum().model;
+            lineGroup.selectAll(".model-line")
+                .filter(lineD => lineD.model === model)
+                .transition()
+                .duration(300)
+                .attr("stroke-width", 2.5)
+                .attr("stroke", config.colors(model));
+        }
+
+        // 10.3 数据点点击：弹出详细信息（摘要1、6的点击交互）
+        function handlePointClick(event, d) {
+            // 点击数据点时，弹出浏览器默认提示框（可替换为自定义模态框）
+            alert(`
+                Model: ${d.model}
+                Dataset: ${d.dataset}
+                Metric: ${config.activeMetric}
+                Value: ${d.value.toFixed(2)}%
+            `);
+        }
+
+        // 10.4 更新图例：支持点击切换模型显隐（参考摘要4的图例交互）
+        function updateLegend() {
+            const legendItems = d3.select(".legend")
+                .selectAll(".legend-item")
+                .data(config.models, d => d);
+
+            // 移除已不存在的图例项
+            legendItems.exit().remove();
+
+            // 添加新图例项
+            const newLegendItems = legendItems.enter()
+                .append("div")
+                .attr("class", d => `legend-item ${config.activeModels[d] ? "" : "disabled"}`)
+                .on("click", toggleModel); // 点击图例切换模型显隐
+
+            // 给图例项添加颜色条
+            newLegendItems.append("div")
+                .attr("class", "legend-color")
+                .attr("style", d => `background-color: ${config.colors(d)}`);
+
+            // 给图例项添加文本
+            newLegendItems.append("span")
+                .attr("class", "legend-text")
+                .text(d => d);
+
+            // 更新现有图例项的显隐状态
+            newLegendItems.merge(legendItems)
+                .attr("class", d => `legend-item ${config.activeModels[d] ? "" : "disabled"}`);
+        }
+
+        // 10.5 切换模型显隐状态
+        function toggleModel(event, model) {
+            config.activeModels[model] = !config.activeModels[model];
+            updateChart(); // 重新渲染图表
+        }
+
+        // 10.6 切换指标（Std Acc/CRR/CRA）
+        d3.selectAll(".metric-btn")
+            .on("click", function() {
+                // 更新按钮激活状态
+                d3.selectAll(".metric-btn").classed("active", false);
+                d3.select(this).classed("active", true);
+
+                // 更新当前指标并重新渲染图表
+                config.activeMetric = d3.select(this).attr("data-metric");
+                updateChart();
+            });
+
+        // 10.7 重置缩放与平移
+        d3.select("#reset-zoom")
+            .on("click", function() {
+                d3.select(".chart-container svg")
+                    .transition()
+                    .duration(800)
+                    .call(zoom.transform, d3.zoomIdentity); // 恢复初始缩放状态
+            });
+
+        // 11. 初始化图表
+        updateChart();
+    </script>
+</body>
+</html>
